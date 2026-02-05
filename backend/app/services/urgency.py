@@ -22,7 +22,7 @@ URGENCY_LEVELS = {
 
 # Life-threatening keywords (+50 points)
 LIFE_THREATENING_KEYWORDS = [
-    'dying', 'dead', 'death', 'collapsed', 'unconscious', 'bleeding',
+    'dying', 'dead', 'death', 'collapse', 'collapsed', 'unconscious', 'bleeding',
     'suffocating', 'drowning', 'heart attack', 'stroke', 'critical condition',
     'flatlined', 'not breathing', 'severe bleeding', 'major injury',
 ]

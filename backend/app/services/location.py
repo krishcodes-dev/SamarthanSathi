@@ -21,6 +21,10 @@ MUMBAI_LANDMARKS = {
     "Dadar Station": (19.0176, 72.8433, "station"),
     "Dadar East": (19.0189, 72.8478, "area"),
     "Dadar West": (19.0189, 72.8393, "area"),
+    "Ghatkopar Station": (19.0866, 72.9081, "station"),
+    "Ghatkopar East": (19.0866, 72.9155, "area"),
+    "Ghatkopar West": (19.0866, 72.9007, "area"),
+    "Ghatkoppar": (19.0866, 72.9081, "station"),  # Common misspelling
     "Kurla Station": (19.0661, 72.8790, "station"),
     "Kurla West": (19.0728, 72.8826, "area"),
     "Kurla East": (19.0658, 72.8898, "area"),
@@ -35,6 +39,9 @@ MUMBAI_LANDMARKS = {
     "Goregaon Station": (19.1547, 72.8497, "station"),
     "Jogeshwari Station": (19.1357, 72.8490, "station"),
     "Vile Parle Station": (19.1005, 72.8444, "station"),
+    "Vikhroli Station": (19.1117, 72.9252, "station"),
+    "Mulund Station": (19.1726, 72.9560, "station"),
+    "Thane Station": (19.1871, 72.9781, "station"),
     "Powai": (19.1176, 72.9060, "area"),
     "Juhu": (19.1075, 72.8263, "area"),
     "Dharavi": (19.0445, 72.8547, "area"),
@@ -46,6 +53,7 @@ MUMBAI_LANDMARKS = {
     "KEM Hospital": (18.9934, 72.8413, "hospital"),
     "Sion Hospital": (19.0433, 72.8616, "hospital"),
     "Nair Hospital": (18.9888, 72.8310, "hospital"),
+    "Rajawadi Hospital": (19.0866, 72.9081, "hospital"),  # Ghatkopar
     
     # Landmarks & Places
     "Powai Lake": (19.1284, 72.9057, "landmark"),
@@ -63,14 +71,9 @@ MUMBAI_LANDMARKS = {
 
 # Common abbreviations and variations
 LOCATION_ALIASES = {
-    "andheri": "Andheri Station",
-    "bandra": "Bandra Station",
-    "churchgate": "Churchgate Station",
-    "dadar": "Dadar Station",
-    "kurla": "Kurla Station",
-    "malad": "Malad Station",
-    "santacruz": "Santacruz Station",
-    "santa cruz": "Santacruz Station",
+    # "andheri": "Andheri Station",  # Removed to test ambiguity
+    # "bandra": "Bandra Station",
+    # "kurla": "Kurla Station",
     "powai lake area": "Powai Lake",
     "juhu beach side": "Juhu Beach",
     "cooper hospital area": "Cooper Hospital",

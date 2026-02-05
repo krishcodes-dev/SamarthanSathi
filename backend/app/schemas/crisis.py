@@ -4,7 +4,7 @@ Pydantic schemas for SamarthanSathi crisis-response system.
 These schemas define the API contract for request/response validation.
 """
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Any
 from uuid import UUID
 
 from pydantic import BaseModel, Field, ConfigDict
@@ -57,7 +57,7 @@ class EntityExtraction(BaseModel):
         le=1.0,
         description="Confidence score for location extraction"
     )
-    location_alternatives: Optional[list[str]] = Field(
+    location_alternatives: Optional[list[dict[str, Any]]] = Field(
         None,
         description="Alternative location matches if ambiguous"
     )
@@ -85,6 +85,18 @@ class EntityExtraction(BaseModel):
         None,
         description="Number of people affected (may be text like 'multiple')",
         examples=["50", "multiple", "unknown"]
+    )
+    
+    overall_confidence: Optional[float] = Field(
+        None,
+        ge=0.0,
+        le=1.0,
+        description="Overall confidence score across all entities"
+    )
+    
+    flags: Optional[list[str]] = Field(
+        None,
+        description="Confidence warnings or data quality flags"
     )
 
 
@@ -174,6 +186,8 @@ class CrisisRequestQueueItem(BaseModel):
     urgency_level: Optional[str] = Field(None, description="Urgency level (U1-U5)")
     need_type: Optional[str] = Field(None, description="Type of need")
     location: Optional[str] = Field(None, description="Location string")
+    urgency_analysis: Optional[dict] = Field(None, description="Full urgency analysis object")
+    extraction: Optional[dict] = Field(None, description="Full extraction object")
     
     @classmethod
     def model_validate(cls, obj):
@@ -185,13 +199,15 @@ class CrisisRequestQueueItem(BaseModel):
             'status': obj.status,
         }
         
-        # Extract from urgency_analysis
+        # Include full urgency_analysis object for frontend reasoning panel
         if obj.urgency_analysis:
+            data['urgency_analysis'] = obj.urgency_analysis
             data['urgency_score'] = obj.urgency_analysis.get('score')
             data['urgency_level'] = obj.urgency_analysis.get('level')
         
-        # Extract from extraction
+        # Include full extraction object for frontend
         if obj.extraction:
+            data['extraction'] = obj.extraction
             data['need_type'] = obj.extraction.get('need_type')
             data['location'] = obj.extraction.get('location')
         

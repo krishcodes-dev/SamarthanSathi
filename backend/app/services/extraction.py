@@ -44,7 +44,8 @@ RESOURCE_TYPE_KEYWORDS = {
     ],
     'rescue': [
         'rescue', 'trapped', 'stuck', 'collapsed', 'building collapsed',
-        'earthquake', 'fire', 'flood', 'tree fell', 'debris', 'rubble',
+        'earthquake', 'fire', 'fire brigade', 'fire department', 'firefighters',
+        'burning', 'smoke', 'flood', 'tree fell', 'debris', 'rubble',
     ],
     'transport': [
         'transport', 'vehicle', 'bus', 'car', 'truck', 'evacuation',

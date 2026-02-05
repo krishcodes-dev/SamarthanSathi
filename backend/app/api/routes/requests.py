@@ -24,7 +24,10 @@ from app.services import (
     calculate_urgency,
     match_crisis_request,
 )
+from app.services.hybrid_extraction import extract_entities
 from app.services.location import resolve_location
+from app.services.validator import validate_crisis_message
+from app.utils.logger import log_request_processing
 
 
 router = APIRouter(prefix="/requests", tags=["Crisis Requests"])
@@ -56,11 +59,15 @@ async def submit_crisis_request(
     raw_text = request_data.raw_text
     
     # 1. Validate
-    is_valid, reason = is_valid_crisis_request(raw_text)
+    is_valid, validation_errors = validate_crisis_message(raw_text)
+    
     if not is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid crisis request: {reason}"
+            detail={
+                "error": "Invalid crisis message",
+                "reasons": validation_errors
+            }
         )
     
     # 2. Extract entities
@@ -90,6 +97,14 @@ async def submit_crisis_request(
     db.add(crisis_request)
     await db.commit()
     await db.refresh(crisis_request)
+    
+    # Audit Logging
+    log_request_processing(
+        request_id=str(crisis_request.id),
+        raw_message=raw_text,
+        extraction_result=extraction.model_dump(),
+        urgency_result=urgency.model_dump()
+    )
     
     return CrisisRequestResponse.model_validate(crisis_request)
 
@@ -234,9 +249,18 @@ async def get_resource_matches(
         )
     
     # 3. Get available resources
+    try:
+        resource_type_enum = ResourceType(extraction['need_type'])
+    except ValueError:
+        # Try case-insensitive match if direct lookup fails
+        try:
+            resource_type_enum = ResourceType(extraction['need_type'].upper())
+        except ValueError:
+            return []
+
     resource_result = await db.execute(
         select(Resource).where(
-            Resource.resource_type == ResourceType(extraction['need_type'])
+            Resource.resource_type == resource_type_enum
         )
     )
     available_resources = resource_result.scalars().all()
@@ -251,14 +275,18 @@ async def get_resource_matches(
         'longitude': extraction['longitude'],
         'need_type': extraction['need_type'],
         'quantity': extraction.get('quantity'),
-        'urgency_score': urgency_analysis.get('score', 50),
-        'urgency_level': urgency_analysis.get('level', 'U3 - Medium'),
+        'urgency_score': urgency_analysis.get('score', 0),
+        'urgency_level': urgency_analysis.get('level', 'U4')
     }
     
-    # 5. Match resources
-    matches = match_crisis_request(matching_request, available_resources, top_n=top_n)
+    # 5. Run matching algorithm
+    matches = match_crisis_request(
+        crisis_request=matching_request,
+        available_resources=available_resources,
+        top_n=top_n
+    )
     
-    # 6. Convert to response schema
+    # 6. Convert to response model
     return [
         ResourceMatchResponse(
             resource_id=m['resource_id'],

@@ -17,8 +17,15 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str
     
-    # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:5173"]
+    # CORS - Allow all common Vite dev server ports
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:5173",
+        "http://localhost:5174", 
+        "http://localhost:5175",
+        "http://localhost:5176",
+        "http://localhost:5177",
+        "http://localhost:5178",
+    ]
     
     # API
     API_V1_PREFIX: str = "/api/v1"
