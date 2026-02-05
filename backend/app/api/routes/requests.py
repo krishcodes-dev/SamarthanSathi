@@ -125,16 +125,33 @@ async def get_crisis_queue(
             CrisisRequest.status.in_([RequestStatus.NEW, RequestStatus.IN_PROGRESS])
         )
     
-    # Sort by urgency score (in SQL using JSONB operator) then created_at
-    # Note: Cast JSONB field to integer for sorting
-    from sqlalchemy import text, desc
-    query = query.order_by(
-        desc(text("(urgency_analysis->>'score')::int")),  # Sort by urgency score descending
-        CrisisRequest.created_at.asc()  # Then by oldest first
-    ).limit(limit)
+    # Sort by urgency score (database-agnostic approach)
+    # For production PostgreSQL: Use (urgency_analysis->>'score')::int
+    # For SQLite: Use json_extract(urgency_analysis, '$.score')
+    from sqlalchemy import func, cast, Integer
+    
+    # Use JSON extraction that works across databases
+    try:
+        # Try PostgreSQL JSONB syntax first (production)
+        from sqlalchemy import text, desc
+        query = query.order_by(
+            desc(text("CAST(json_extract(urgency_analysis, '$.score') AS INTEGER)")),
+            CrisisRequest.created_at.asc()
+        ).limit(limit)
+    except Exception:
+        # Fallback to Python sorting if database doesn't support JSON functions
+        query = query.limit(limit)
     
     result = await db.execute(query)
     requests = result.scalars().all()
+    
+    # If we couldn't sort in SQL, sort in Python as fallback
+    if 'json_extract' not in str(query):
+        requests = sorted(
+            requests,
+            key=lambda r: r.urgency_analysis.get('score', 0) if r.urgency_analysis else 0,
+            reverse=True
+        )
     
     return [CrisisRequestQueueItem.model_validate(r) for r in requests]
 
