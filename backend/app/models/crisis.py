@@ -129,6 +129,19 @@ class CrisisRequest(Base):
         comment="Urgency scoring output: {score, level, reasoning, confidence}"
     )
     
+    # Feedback for training (User-in-the-loop)
+    user_feedback: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Requester feedback: {is_correct, corrections, comment}"
+    )
+    
+    dispatcher_feedback: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True,
+        comment="Dispatcher ratings: {ratings, comment}"
+    )
+    
     # Status tracking
     status: Mapped[RequestStatus] = mapped_column(
         Enum(RequestStatus, name="request_status_enum"),

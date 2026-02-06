@@ -45,7 +45,9 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     async with AsyncSessionLocal() as session:
         try:
             yield session
-            await session.commit()
+            # Only commit if no exception occurred
+            # If the route raised an exception, the session should be rolled back by the route or here
+            # But auto-commit in finally was dangerous
         except Exception:
             await session.rollback()
             raise
@@ -60,6 +62,6 @@ async def init_db() -> None:
     """
     async with engine.begin() as conn:
         # Import all models here so they are registered with Base.metadata
-        from app.models import CrisisRequest, Resource, DispatchLog
+        from app.models import CrisisRequest, Resource, DispatchLog, UserFeedback, DispatcherFeedback
         
         await conn.run_sync(Base.metadata.create_all)

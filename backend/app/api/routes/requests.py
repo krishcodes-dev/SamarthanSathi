@@ -14,13 +14,13 @@ from app.models.crisis import CrisisRequest, Resource, DispatchLog, RequestStatu
 from app.schemas.crisis import (
     CrisisRequestCreate,
     CrisisRequestResponse,
+    RequestPreviewResponse,
     CrisisRequestQueueItem,
     ResourceMatchResponse,
     DispatchResponse,
 )
 from app.services import (
     is_valid_crisis_request,
-    extract_entities,
     calculate_urgency,
     match_crisis_request,
 )
@@ -30,7 +30,21 @@ from app.services.validator import validate_crisis_message
 from app.utils.logger import log_request_processing
 
 
+
 router = APIRouter(prefix="/requests", tags=["Crisis Requests"])
+
+
+@router.post(
+    "/preview",
+    status_code=status.HTTP_200_OK,
+    summary="Preview a crisis request (Debug)",
+    description="Analyze text without storing. Used for user confirmation."
+)
+async def preview_crisis_request():
+    """
+    Generate a preview (Debug Mode).
+    """
+    return {"status": "ok", "debug": "check_preview_endpoint_reachable"}
 
 
 @router.post(
@@ -402,3 +416,6 @@ async def dispatch_resource(
         notes=notes,
         message=f"Dispatched {quantity} units from {resource.provider_name}"
     )
+
+
+

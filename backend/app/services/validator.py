@@ -32,21 +32,33 @@ def validate_crisis_message(text: str) -> Tuple[bool, List[str]]:
         errors.append("Potential spam content detected")
     
     # Must have some urgent intent OR clear location keywords
+    # Must have some urgent intent OR clear location keywords
     urgent_keywords = [
+        # English
         'need', 'require', 'help', 'urgent', 'emergency', 'trapped', 'injured', 
         'fire', 'flood', 'collapse', 'stuck', 'accident', 'critical', 'save', 
-        'casualty', 'supply', 'food', 'water', 'ambulance'
+        'casualty', 'supply', 'food', 'water', 'ambulance', 'medicine', 'hospital',
+        'doctor', 'bleeding', 'pain', 'burning', 'please', 'sos', 'rescue',
+        # Hinglish/Hindi
+        'madad', 'bachao', 'chahiye', 'jarurat', 'khana', 'pani', 'dawa',
+        'aag', 'phas', 'gaya', 'accident', 'mar', 'dawakhana'
     ]
     
     has_need_indicator = any(word in text.lower() for word in urgent_keywords)
     
-    # Simple proper noun check (very rough heuristic for location presence)
-    has_location_indicator = len([char for char in text if char.isupper()]) > 0
+    # Relaxed location check: Look for common prepositions or location keywords
+    location_keywords = [
+        'at', 'in', 'near', 'from', 'location', 'address', 'bldg', 'road', 
+        'st', 'marg', 'lane', 'opp', 'behind', 'near', 'sector', 'plot',
+        'gali', 'chowk', 'nagar', 'colony', 'apartment', 'flat'
+    ]
+    has_location_indicator = any(kw in text.lower() for kw in location_keywords)
     
     # Also check for numbers (often indicates address or quantity)
     has_number = any(char.isdigit() for char in text)
 
+    # Allow if urgency keywords OR location indicators are found
     if not has_need_indicator and not (has_location_indicator or has_number):
-        errors.append("Message lacks clear indicators of a crisis (e.g., 'help', 'need', 'fire')")
+        errors.append("Message lacks clear indicators of a crisis (e.g., 'help', 'need', 'fire', or location)")
     
     return (len(errors) == 0, errors)

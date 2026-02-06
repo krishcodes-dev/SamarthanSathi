@@ -1,3 +1,5 @@
+import { AlertTriangle } from 'lucide-react';
+
 export default function ReasoningPanel({ urgencyAnalysis }) {
     if (!urgencyAnalysis) {
         return (
@@ -14,14 +16,14 @@ export default function ReasoningPanel({ urgencyAnalysis }) {
     const displayScore = score != null ? score : '—';
 
     return (
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded animate-fade-in">
+        <div className="p-4 bg-blue-50 border border-blue-100 rounded-lg animate-fade-in shadow-sm">
             <div className="flex items-center justify-between mb-3">
-                <h4 className="font-semibold text-gray-800">Urgency Analysis</h4>
+                <h4 className="font-semibold text-blue-900 text-sm uppercase tracking-wide">Urgency Analysis</h4>
                 <div className="flex items-center gap-4">
-                    <span className="text-sm text-gray-600">
+                    <span className="text-xs text-blue-600 font-medium">
                         Confidence: {displayConfidence}%
                     </span>
-                    <span className="text-sm font-semibold text-blue-700">
+                    <span className="text-sm font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded">
                         Score: {displayScore}/100
                     </span>
                 </div>
@@ -30,10 +32,10 @@ export default function ReasoningPanel({ urgencyAnalysis }) {
             {/* Reasoning breakdown */}
             {reasoning && reasoning.length > 0 && (
                 <div className="mb-3">
-                    <div className="text-xs font-semibold text-gray-600 mb-2">REASONING:</div>
-                    <div className="space-y-1">
+                    <div className="text-xs font-bold text-blue-400 mb-2">REASONING</div>
+                    <div className="space-y-2">
                         {reasoning.map((line, idx) => (
-                            <div key={idx} className="text-sm text-gray-700 pl-2 border-l-2 border-blue-300">
+                            <div key={idx} className="text-sm text-gray-700 pl-3 border-l-2 border-blue-400 py-0.5">
                                 {line}
                             </div>
                         ))}
@@ -44,12 +46,12 @@ export default function ReasoningPanel({ urgencyAnalysis }) {
             {/* Flags/warnings */}
             {flags && flags.length > 0 && (
                 <div className="mt-3 pt-3 border-t border-blue-200">
-                    <div className="text-xs font-semibold text-gray-600 mb-2">FLAGS:</div>
+                    <div className="text-xs font-bold text-orange-600 mb-2">FLAGS</div>
                     <div className="space-y-1">
                         {flags.map((flag, idx) => (
-                            <div key={idx} className="text-sm text-orange-700 flex items-start gap-2">
-                                <span>⚠️</span>
-                                <span>{flag}</span>
+                            <div key={idx} className="text-sm text-orange-800 flex items-start gap-2 bg-orange-50 p-2 rounded border border-orange-100">
+                                <AlertTriangle size={16} />
+                                <span className="font-medium">{flag}</span>
                             </div>
                         ))}
                     </div>

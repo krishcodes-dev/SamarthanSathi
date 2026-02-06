@@ -12,11 +12,11 @@ const apiClient = axios.create({
 // ===== REQUEST INTERCEPTOR =====
 apiClient.interceptors.request.use(
     (config) => {
-        console.log(`🔵 ${config.method.toUpperCase()} ${config.url}`);
+        console.log(`[INFO] ${config.method.toUpperCase()} ${config.url}`);
         return config;
     },
     (error) => {
-        console.error('❌ Request error:', error);
+        console.error('[ERROR] Request error:', error);
         return Promise.reject(error);
     }
 );
@@ -24,7 +24,7 @@ apiClient.interceptors.request.use(
 // ===== RESPONSE INTERCEPTOR =====
 apiClient.interceptors.response.use(
     (response) => {
-        console.log(`✅ ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`);
+        console.log(`[SUCCESS] ${response.config.method.toUpperCase()} ${response.config.url} → ${response.status}`);
         return response.data;  // Return only data, not full response
     },
     (error) => {
@@ -34,7 +34,7 @@ apiClient.interceptors.response.use(
             // Server responded with error status
             const { status, data } = error.response;
 
-            console.error(`❌ ${status} ${error.config.method.toUpperCase()} ${error.config.url}`);
+            console.error(`[ERROR] ${status} ${error.config.method.toUpperCase()} ${error.config.url}`);
             console.error('Error data:', data);
 
             // Format error message
@@ -53,7 +53,7 @@ apiClient.interceptors.response.use(
 
         } else if (error.request) {
             // Request made but no response (network error, CORS, timeout)
-            console.error('❌ Network error:', error.message);
+            console.error('[ERROR] Network error:', error.message);
 
             if (error.code === 'ECONNABORTED') {
                 return Promise.reject(new Error('Request timeout - server is slow'));
@@ -63,7 +63,7 @@ apiClient.interceptors.response.use(
 
         } else {
             // Something else went wrong
-            console.error('❌ Unknown error:', error.message);
+            console.error('[ERROR] Unknown error:', error.message);
             return Promise.reject(new Error(error.message));
         }
     }
@@ -78,8 +78,13 @@ const api = {
     },
 
     // Submit new request
-    submitRequest: async (raw_text) => {
-        return apiClient.post('/requests/submit', { raw_text });
+    submitRequest: async (raw_text, confirmed = false, preview_id = null) => {
+        return apiClient.post('/requests/submit', { raw_text, confirmed, preview_id });
+    },
+
+    // Preview request (no persistence)
+    previewRequest: async (raw_text) => {
+        return apiClient.post('/requests/preview', { raw_text });
     },
 
     // Get single request with full details
@@ -92,18 +97,31 @@ const api = {
         return apiClient.get(`/requests/${requestId}/matches`);
     },
 
-    // Dispatch resource to request
+    // Dispatch resource
     dispatchResource: async (requestId, resourceId, quantity) => {
-        return apiClient.post(
-            `/matches/${requestId}/dispatch/${resourceId}`,
-            { quantity }
-        );
+        return apiClient.post(`/requests/${requestId}/dispatch/${resourceId}`, null, {
+            params: { quantity }
+        });
+    },
+
+    // Submit user confirmation/correction (Reporter)
+    submitUserFeedback: async (feedbackData) => {
+        return apiClient.post('/feedback/user', feedbackData);
+    },
+
+    // Submit dispatcher performance ratings (Operator)
+    submitDispatcherFeedback: async (feedbackData) => {
+        return apiClient.post('/feedback/dispatcher', feedbackData);
+    },
+
+    // Submit dispatcher feedback (Operator)
+    submitDispatcherFeedback: async (requestId, feedbackData) => {
+        return apiClient.post(`/requests/${requestId}/dispatcher-feedback`, feedbackData);
     },
 
     // Health check
     healthCheck: async () => {
-        // Health is at root level, not under /api/v1
-        return axios.get('http://localhost:8000/health');
+        return apiClient.get('/health'); // Assuming health endpoint exists or we use root
     }
 };
 

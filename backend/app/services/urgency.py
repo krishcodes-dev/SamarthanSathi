@@ -25,6 +25,7 @@ LIFE_THREATENING_KEYWORDS = [
     'dying', 'dead', 'death', 'collapse', 'collapsed', 'unconscious', 'bleeding',
     'suffocating', 'drowning', 'heart attack', 'stroke', 'critical condition',
     'flatlined', 'not breathing', 'severe bleeding', 'major injury',
+    'fire', 'flood',  # Added for critical boosting
 ]
 
 # High urgency keywords (+30 points)
@@ -156,10 +157,11 @@ def score_keywords(text: str) -> Tuple[int, List[str]]:
     text_lower = text.lower()
     
     # Check life-threatening keywords
+    # Check life-threatening keywords
     for keyword in LIFE_THREATENING_KEYWORDS:
         if keyword in text_lower:
-            score += 50
-            reasoning.append(f"⚠️  Life-threatening keyword: '{keyword}' (+50)")
+            score += 70  # Boosted for critical safety
+            reasoning.append(f"⚠️  Life-threatening keyword: '{keyword}' (+70)")
             break  # Only count once
     
     # Check high urgency keywords

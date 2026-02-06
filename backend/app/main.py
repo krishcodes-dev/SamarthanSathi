@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+# Force reload for router fix
 from app.core.config import settings
 from app.core.database import init_db
 from app.api.health import router as health_router

@@ -5,8 +5,11 @@ from app.models.crisis import (
     DispatchLog,
     RequestStatus,
     ResourceType,
+    ResourceType,
+    ResourceType,
     AvailabilityStatus,
 )
+from app.models.feedback import UserFeedback, DispatcherFeedback
 
 __all__ = [
     "CrisisRequest",
@@ -15,4 +18,6 @@ __all__ = [
     "RequestStatus",
     "ResourceType",
     "AvailabilityStatus",
+    "UserFeedback",
+    "DispatcherFeedback",
 ]

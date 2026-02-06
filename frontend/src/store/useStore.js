@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import api from '../api/client';
+import { playAlertSound } from '../utils/SoundManager';
 
 const useStore = create((set, get) => ({
     // ===== STATE =====
@@ -37,7 +38,34 @@ const useStore = create((set, get) => ({
         }));
 
         try {
+            const previousRequests = get().requests;
             const data = await api.getQueue(limit);
+
+            // Alerting Logic: Check for new requests
+            if (previousRequests.length > 0 && data.length > 0) {
+                const prevIds = new Set(previousRequests.map(r => r.id));
+                const newRequests = data.filter(r => !prevIds.has(r.id));
+
+                if (newRequests.length > 0) {
+                    // 1. Play Sound
+                    playAlertSound('default');
+
+                    // 2. Flash Title
+                    document.title = `(${newRequests.length}) New Crisis! | SamarthanSathi`;
+                    setTimeout(() => { document.title = "SamarthanSathi - Dispatch"; }, 4000);
+
+                    // 3. Toast
+                    newRequests.forEach(req => {
+                        // Truncate text for the toast
+                        const text = req.raw_text.length > 40
+                            ? req.raw_text.slice(0, 40) + '...'
+                            : req.raw_text;
+
+                        get().addNotification('info', `New Report: ${text}`);
+                    });
+                }
+            }
+
             set({ requests: data });
         } catch (err) {
             set(state => ({
@@ -107,8 +135,8 @@ const useStore = create((set, get) => ({
         try {
             await api.dispatchResource(requestId, resourceId, quantity);
 
-            // Success: Add notification
-            get().addNotification('success', `✅ Dispatched ${quantity} units successfully`);
+            // Success: Add notification (Clean message, icon handled by component)
+            get().addNotification('success', `Dispatched ${quantity} units successfully`);
 
             // Update request status in local state
             set(state => ({
@@ -129,7 +157,7 @@ const useStore = create((set, get) => ({
                     dispatch: { ...state.error.dispatch, [requestId]: err.message }
                 }
             }));
-            get().addNotification('error', `❌ Dispatch failed: ${err.message}`);
+            get().addNotification('error', `Dispatch failed: ${err.message}`);
         } finally {
             set(state => ({
                 loading: {

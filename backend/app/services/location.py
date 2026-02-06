@@ -5,6 +5,7 @@ Resolves extracted location strings to geocoordinates without external API calls
 """
 from typing import Optional, List, Dict, Tuple
 from fuzzywuzzy import fuzz, process
+from app.utils.geo import haversine_distance
 
 
 # In-memory landmark registry for Mumbai
@@ -263,22 +264,6 @@ def get_nearby_landmarks(lat: float, lng: float, radius_km: float = 5.0) -> List
     Returns:
         List of nearby landmarks with distances
     """
-    import math
-    
-    def haversine_distance(lat1, lon1, lat2, lon2):
-        """Calculate distance between two points in km."""
-        R = 6371  # Earth radius in km
-        
-        dlat = math.radians(lat2 - lat1)
-        dlon = math.radians(lon2 - lon1)
-        
-        a = (math.sin(dlat / 2) ** 2 +
-             math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-             math.sin(dlon / 2) ** 2)
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        
-        return R * c
-    
     nearby = []
     for name, (landmark_lat, landmark_lng, category) in MUMBAI_LANDMARKS.items():
         distance = haversine_distance(lat, lng, landmark_lat, landmark_lng)

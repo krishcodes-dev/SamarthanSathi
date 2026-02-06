@@ -9,147 +9,74 @@ from typing import List, Dict, Optional, Tuple
 from app.models.crisis import Resource, CrisisRequest, ResourceType, AvailabilityStatus
 
 
+
 # ===== CONFIGURATION =====
 
-# Distance thresholds (km)
-MAX_DISTANCE_KM = 50.0  # Maximum distance to consider
-IDEAL_DISTANCE_KM = 5.0  # Ideal distance for full distance score
+# Distance thresholds
+MAX_EFFECTIVE_DISTANCE_KM = 20.0  # Distance at which score becomes 0
 
-# Urgency weights (how much urgency affects matching)
-URGENCY_WEIGHTS = {
-    "U1": 2.0,   # Critical - double the importance of proximity
-    "U2": 1.5,   # High - 50% more weight
-    "U3": 1.2,   # Medium - slight boost
-    "U4": 1.0,   # Low - normal weighting
-    "U5": 0.8,   # Minimal - slightly reduced
+# Urgency Profiles (Weights must sum to 1.0)
+URGENCY_PROFILES = {
+    "U1": {"distance": 0.80, "quantity": 0.20},  # Critical: Proximity is paramount
+    "U2": {"distance": 0.70, "quantity": 0.30},  # High: strong distance preference
+    "U3": {"distance": 0.50, "quantity": 0.50},  # Medium: balanced
+    "U4": {"distance": 0.30, "quantity": 0.70},  # Low: quantity matters more
+    "U5": {"distance": 0.20, "quantity": 0.80},  # Minimal: go far for bulk
 }
 
-# Scoring weights
-WEIGHT_DISTANCE = 0.35      # 35% weight to proximity
-WEIGHT_QUANTITY = 0.30      # 30% weight to quantity match
-WEIGHT_AVAILABILITY = 0.20  # 20% weight to availability status
-WEIGHT_URGENCY = 0.15       # 15% weight to urgency alignment
+
+from app.utils.geo import haversine_distance
 
 
-def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+def score_distance(distance_km: float) -> Tuple[float, str]:
     """
-    Calculate distance between two points using Haversine formula.
-    
-    Args:
-        lat1, lon1: First point coordinates
-        lat2, lon2: Second point coordinates
-        
-    Returns:
-        Distance in kilometers
+    Score resource based on distance (0-100).
+    Linear decay: 100 at 0km -> 0 at 20km
     """
-    R = 6371  # Earth radius in km
+    if distance_km >= MAX_EFFECTIVE_DISTANCE_KM:
+        return 0.0, f"{distance_km:.1f}km (Too far)"
     
-    dlat = math.radians(lat2 - lat1)
-    dlon = math.radians(lon2 - lon1)
-    
-    a = (math.sin(dlat / 2) ** 2 +
-         math.cos(math.radians(lat1)) * math.cos(math.radians(lat2)) *
-         math.sin(dlon / 2) ** 2)
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    
-    return R * c
-
-
-def score_distance(distance_km: float, urgency_level: str) -> Tuple[float, str]:
-    """
-    Score resource based on distance with urgency weighting.
-    
-    Args:
-        distance_km: Distance to resource in km
-        urgency_level: Urgency level (U1-U5)
-        
-    Returns:
-        Tuple of (score 0-1, reasoning)
-    """
-    if distance_km > MAX_DISTANCE_KM:
-        return 0.0, f"Too far: {distance_km:.1f}km (max: {MAX_DISTANCE_KM}km)"
-    
-    # Base distance score (exponential decay)
-    # Score = 1.0 at 0km, ~0.6 at ideal distance, approaches 0 at max
-    base_score = math.exp(-distance_km / IDEAL_DISTANCE_KM)
-    
-    # Apply urgency weighting
-    urgency_weight = URGENCY_WEIGHTS.get(urgency_level.split()[0], 1.0)
-    
-    # For critical cases, penalize distance more heavily
-    if urgency_weight > 1.0:
-        base_score = base_score ** (1.0 / urgency_weight)
-    
-    reasoning = f"Distance: {distance_km:.1f}km (urgency: {urgency_level}, weight: {urgency_weight}x)"
-    
-    return round(base_score, 3), reasoning
+    # Linear scaling: (1 - d/max) * 100
+    score = (1 - (distance_km / MAX_EFFECTIVE_DISTANCE_KM)) * 100
+    return max(0.0, score), f"{distance_km:.1f}km"
 
 
 def score_quantity(
     requested_qty: Optional[int],
-    available_qty: int,
-    urgency_level: str
+    available_qty: int
 ) -> Tuple[float, str, bool]:
     """
-    Score resource based on quantity match.
-    
-    Args:
-        requested_qty: Quantity requested (None if unspecified)
-        available_qty: Quantity available
-        urgency_level: Urgency level (U1-U5)
-        
-    Returns:
-        Tuple of (score 0-1, reasoning, is_partial)
+    Score resource based on quantity match (0-100).
+    Returns (score, reasoning, is_partial)
     """
-    # If quantity not specified, assume resource is good enough
-    if requested_qty is None:
-        return 1.0, "Quantity not specified - assuming adequate", False
-    
     if available_qty <= 0:
-        return 0.0, "No quantity available", False
-    
+        return 0.0, "None available", False
+        
+    # If no quantity requested, assume 100% score (perfect match)
+    if requested_qty is None or requested_qty <= 0:
+        return 100.0, f"Available: {available_qty}", False
+
     if available_qty >= requested_qty:
         # Full fulfillment
-        surplus_pct = ((available_qty - requested_qty) / requested_qty) * 100
-        reasoning = f"Full match: {available_qty}/{requested_qty} ({surplus_pct:.0f}% surplus)"
-        return 1.0, reasoning, False
+        return 100.0, f"Available: {available_qty} (Full)", False
     
-    else:
-        # Partial fulfillment
-        fulfillment_pct = (available_qty / requested_qty)
-        
-        # For critical cases, partial fulfillment is less acceptable
-        urgency_weight = URGENCY_WEIGHTS.get(urgency_level.split()[0], 1.0)
-        
-        if urgency_weight >= 1.5:  # U1, U2
-            # Penalize partial fulfillment more for critical cases
-            score = fulfillment_pct * 0.7  # Max 70% score for partial
-        else:
-            # More lenient for non-critical cases
-            score = fulfillment_pct * 0.85  # Max 85% score for partial
-        
-        reasoning = f"Partial match: {available_qty}/{requested_qty} ({fulfillment_pct*100:.0f}% fulfillment)"
-        return round(score, 3), reasoning, True
+    # Partial fulfillment ratio
+    ratio = available_qty / requested_qty
+    score = ratio * 100
+    return score, f"Available: {available_qty} ({int(ratio*100)}% of req)", True
 
 
 def score_availability(status: AvailabilityStatus) -> Tuple[float, str]:
     """
-    Score resource based on availability status.
-    
-    Args:
-        status: Current availability status
-        
-    Returns:
-        Tuple of (score 0-1, reasoning)
+    Helper for reasoning text.
     """
-    status_scores = {
-        AvailabilityStatus.AVAILABLE: (1.0, "Fully available"),
-        AvailabilityStatus.PARTIALLY_AVAILABLE: (0.7, "Partially available"),
-        AvailabilityStatus.DISPATCHED: (0.3, "Currently dispatched"),
-        AvailabilityStatus.UNAVAILABLE: (0.0, "Unavailable"),
+    status_map = {
+        AvailabilityStatus.AVAILABLE: "Available",
+        AvailabilityStatus.PARTIALLY_AVAILABLE: "Limited",
+        AvailabilityStatus.DISPATCHED: "Dispatched",
+        AvailabilityStatus.UNAVAILABLE: "Unavailable",
     }
-    
-    return status_scores.get(status, (0.0, "Unknown status"))
+    return 0.0, status_map.get(status, "Unknown")
 
 
 def calculate_match_score(
@@ -160,55 +87,51 @@ def calculate_match_score(
     resource: Resource
 ) -> Tuple[float, List[str], bool]:
     """
-    Calculate overall match score for a resource.
-    
-    Args:
-        request_lat, request_lng: Request location
-        request_qty: Requested quantity
-        urgency_level: Urgency level (U1-U5)
-        resource: Resource to match
-        
-    Returns:
-        Tuple of (total_score, reasoning_list, is_partial_fulfillment)
+    Calculate overall match score for a resource using urgency profiles.
+    Returns score normalized to 0-1 for API compatibility.
     """
     reasoning = []
     
-    # 1. Distance score
+    # 0. Determine Weights
+    # Extract "U1" from "U1 - Critical"
+    u_code = urgency_level.split(" ")[0] if urgency_level else "U4"
+    profile = URGENCY_PROFILES.get(u_code, URGENCY_PROFILES["U4"])
+    
+    w_dist = profile["distance"]
+    w_qty = profile["quantity"]
+
+    # 1. Distance score (0-100)
     distance_km = haversine_distance(
         request_lat, request_lng,
         resource.latitude, resource.longitude
     )
-    dist_score, dist_reason = score_distance(distance_km, urgency_level)
-    reasoning.append(f"📍 {dist_reason} → {dist_score:.2f}")
+    dist_score, dist_text = score_distance(distance_km)
     
-    # 2. Quantity score
-    qty_score, qty_reason, is_partial = score_quantity(
-        request_qty, resource.quantity_available, urgency_level
-    )
-    reasoning.append(f"📦 {qty_reason} → {qty_score:.2f}")
-    
-    # 3. Availability score
-    avail_score, avail_reason = score_availability(resource.availability_status)
-    reasoning.append(f"✓ {avail_reason} → {avail_score:.2f}")
-    
-    # 4. Calculate weighted total
-    total_score = (
-        dist_score * WEIGHT_DISTANCE +
-        qty_score * WEIGHT_QUANTITY +
-        avail_score * WEIGHT_AVAILABILITY
+    # Explain: "Distance: 5.0km (Score: 75, Weight: 80%)"
+    reasoning.append(
+        f"📍 Distance: {dist_text} (Score: {int(dist_score)}, Weight: {int(w_dist*100)}%)"
     )
     
-    # 5. Urgency bonus (for critical cases, boost score if other factors are good)
-    urgency_weight = URGENCY_WEIGHTS.get(urgency_level.split()[0], 1.0)
-    if urgency_weight >= 1.5 and total_score >= 0.6:
-        urgency_bonus = 0.05 * urgency_weight
-        total_score = min(total_score + urgency_bonus, 1.0)
-        reasoning.append(f"⚡ Urgency bonus: {urgency_level} (+{urgency_bonus:.2f})")
+    # 2. Quantity score (0-100)
+    qty_score, qty_text, is_partial = score_quantity(request_qty, resource.quantity_available)
     
-    total_score = round(total_score, 3)
-    reasoning.insert(0, f"🎯 Total match score: {total_score:.2f}/1.00")
+    reasoning.append(
+        f"📦 Capacity: {qty_text} (Score: {int(qty_score)}, Weight: {int(w_qty*100)}%)"
+    )
     
-    return total_score, reasoning, is_partial
+    # 3. Availability info (No score impact, just for info)
+    _, avail_text = score_availability(resource.availability_status)
+    reasoning.append(f"ℹ️ Status: {avail_text}")
+
+    # 4. Final Weighted Calculation (0-100)
+    final_score_100 = (dist_score * w_dist) + (qty_score * w_qty)
+    
+    # 5. Normalize to 0-1 for API contract
+    final_score_0_1 = round(final_score_100 / 100.0, 2)
+    
+    reasoning.insert(0, f"🎯 Match Score: {int(final_score_100)}/100 ({u_code} Profile)")
+
+    return final_score_0_1, reasoning, is_partial
 
 
 def match_resources(

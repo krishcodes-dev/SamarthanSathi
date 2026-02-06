@@ -43,9 +43,22 @@ RESOURCE_TYPE_KEYWORDS = {
         'roof', 'temporary housing', 'homeless',
     ],
     'rescue': [
-        'rescue', 'trapped', 'stuck', 'collapsed', 'building collapsed',
-        'earthquake', 'fire', 'fire brigade', 'fire department', 'firefighters',
-        'burning', 'smoke', 'flood', 'tree fell', 'debris', 'rubble',
+        # Core rescue terms
+        'rescue', 'trapped', 'stuck', 'stranded',
+        
+        # Collapse terms
+        'collapse', 'collapsed', 'collapsing', 'caved in',
+        'building collapse', 'building collapsed', 'structure collapse',
+        
+        # Fire terms
+        'fire', 'fires', 'burning', 'burnt', 'smoke',
+        'fire brigade', 'fire department', 'firefighters',
+        
+        # Flood terms
+        'flood', 'flooded', 'flooding', 'floodwater',
+        
+        # Natural disasters
+        'earthquake', 'landslide', 'tree fell', 'debris', 'rubble',
     ],
     'transport': [
         'transport', 'vehicle', 'bus', 'car', 'truck', 'evacuation',

@@ -158,6 +158,17 @@ class CrisisRequestCreate(BaseModel):
         description="Raw crisis message text",
         examples=["Need 50 blankets urgently near Andheri station. 20 families affected. Contact: 9876543210"]
     )
+    confirmed: Optional[bool] = Field(False, description="Whether user confirmed the preview")
+    preview_id: Optional[str] = Field(None, description="ID from the preview step")
+
+
+class RequestPreviewResponse(BaseModel):
+    """Schema for request preview (no persistence)."""
+    preview_id: str
+    raw_text: str
+    extraction: Optional[EntityExtraction] = None
+    urgency_analysis: Optional[UrgencyAnalysis] = None
+    flags: List[str] = []
 
 
 class CrisisRequestResponse(BaseModel):
@@ -184,6 +195,8 @@ class CrisisRequestQueueItem(BaseModel):
     status: RequestStatus
     urgency_score: Optional[int] = Field(None, description="Urgency score 0-100")
     urgency_level: Optional[str] = Field(None, description="Urgency level (U1-U5)")
+    dispatched_quantity: int = Field(..., description="Quantity dispatched")
+    request_status: RequestStatus = Field(..., description="New status of request")
     need_type: Optional[str] = Field(None, description="Type of need")
     location: Optional[str] = Field(None, description="Location string")
     urgency_analysis: Optional[dict] = Field(None, description="Full urgency analysis object")
@@ -197,6 +210,9 @@ class CrisisRequestQueueItem(BaseModel):
             'raw_text': obj.raw_text,
             'created_at': obj.created_at,
             'status': obj.status,
+            # Map alias for frontend table
+            'request_status': obj.status,
+            'dispatched_quantity': 0,  # Default to 0 for list view
         }
         
         # Include full urgency_analysis object for frontend reasoning panel
@@ -383,3 +399,29 @@ class HealthCheckResponse(BaseModel):
 class MessageResponse(BaseModel):
     """Generic message response schema."""
     message: str
+
+
+# ===== FEEDBACK SCHEMAS =====
+
+class UserFeedbackSubmit(BaseModel):
+    """Schema for user confirmation/correction feedback"""
+    """Schema for user confirmation/correction feedback"""
+    request_id: UUID
+    is_correct: bool
+    corrected_text: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class DispatcherFeedbackSubmit(BaseModel):
+    """Schema for dispatcher performance rating feedback"""
+    request_id: UUID
+    extraction_rating: Optional[int] = Field(None, ge=1, le=5)
+    matching_rating: Optional[int] = Field(None, ge=1, le=5)
+    comment: Optional[str] = None
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class DeprecatedDispatcherFeedbackSubmit(BaseModel):
+    """Deprecated: Use DispatcherFeedbackSubmit (new version)"""
+    ratings: dict
+
